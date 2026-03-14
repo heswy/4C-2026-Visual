@@ -144,25 +144,77 @@ function createGround() {
 
 // ==================== 创建斗栱 ====================
 function createDougong() {
-    // 创建斗栱实例
-    dougong = new Dougong(scene);
+    try {
+        console.log('创建斗栱模型...');
+        
+        // 创建斗栱实例
+        dougong = new Dougong(scene);
+        
+        // 创建动画控制器
+        animator = new DougongAnimator(dougong);
+        
+        // 创建标签系统
+        labelSystem = new LabelSystem(scene, camera, renderer, dougong);
+        
+        // 设置标签悬停回调
+        labelSystem.setHoverCallback((component) => {
+            if (window.UIController) {
+                window.UIController.showTip(`构件：${component.name}`);
+            }
+        });
+        
+        labelSystem.setLeaveCallback(() => {
+            // 恢复默认提示
+        });
+        
+        console.log('斗栱模型创建完成');
+    } catch (err) {
+        console.error('创建斗栱失败:', err);
+        // 创建一个简单的替代模型
+        createFallbackModel();
+    }
+}
+
+// ==================== 创建备用模型 ====================
+function createFallbackModel() {
+    console.log('创建备用模型...');
     
-    // 创建动画控制器
-    animator = new DougongAnimator(dougong);
+    const group = new THREE.Group();
     
-    // 创建标签系统
-    labelSystem = new LabelSystem(scene, camera, renderer, dougong);
+    // 简单的底座
+    const baseGeo = new THREE.BoxGeometry(1, 0.2, 1);
+    const baseMat = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
+    const base = new THREE.Mesh(baseGeo, baseMat);
+    base.position.y = 0.1;
+    group.add(base);
     
-    // 设置标签悬停回调
-    labelSystem.setHoverCallback((component) => {
-        if (window.UIController) {
-            window.UIController.showTip(`构件：${component.name}`);
-        }
-    });
+    // 简单的柱子
+    const pillarGeo = new THREE.BoxGeometry(0.3, 0.8, 0.3);
+    const pillarMat = new THREE.MeshLambertMaterial({ color: 0xF5DEB3 });
     
-    labelSystem.setLeaveCallback(() => {
-        // 恢复默认提示
-    });
+    for (let i = 0; i < 4; i++) {
+        const pillar = new THREE.Mesh(pillarGeo, pillarMat);
+        const angle = (i / 4) * Math.PI * 2;
+        pillar.position.set(Math.cos(angle) * 0.5, 0.5, Math.sin(angle) * 0.5);
+        group.add(pillar);
+    }
+    
+    // 简单的屋顶
+    const roofGeo = new THREE.ConeGeometry(0.8, 0.4, 4);
+    const roofMat = new THREE.MeshLambertMaterial({ color: 0x5D4037 });
+    const roof = new THREE.Mesh(roofGeo, roofMat);
+    roof.position.y = 1.1;
+    roof.rotation.y = Math.PI / 4;
+    group.add(roof);
+    
+    scene.add(group);
+    
+    // 设置 dougong 对象
+    dougong = { group: group, scene: scene };
+    animator = { explode: () => {}, assemble: () => {}, setProgress: () => {} };
+    labelSystem = { setHoverCallback: () => {}, setLeaveCallback: () => {} };
+    
+    console.log('备用模型创建完成');
 }
 
 // ==================== 设置模块接口 ====================
@@ -299,8 +351,51 @@ function animate() {
 }
 
 // ==================== DOM加载完成后初始化 ====================
+function checkDependencies() {
+    if (typeof THREE === 'undefined') {
+        console.error('Three.js 未加载');
+        return false;
+    }
+    if (typeof Dougong === 'undefined') {
+        console.error('Dougong 类未加载');
+        return false;
+    }
+    if (typeof DougongAnimator === 'undefined') {
+        console.error('DougongAnimator 类未加载');
+        return false;
+    }
+    if (typeof LabelSystem === 'undefined') {
+        console.error('LabelSystem 类未加载');
+        return false;
+    }
+    if (typeof CaiFenSystem === 'undefined') {
+        console.error('CaiFenSystem 类未加载');
+        return false;
+    }
+    return true;
+}
+
+function safeInit() {
+    console.log('开始初始化...');
+    
+    if (!checkDependencies()) {
+        console.error('依赖项检查失败，延迟重试...');
+        setTimeout(safeInit, 500);
+        return;
+    }
+    
+    try {
+        init();
+        console.log('初始化成功');
+    } catch (err) {
+        console.error('初始化失败:', err);
+        document.getElementById('loadingIndicator').innerHTML = 
+            '<span style="color: #ff6b6b;">加载失败: ' + err.message + '</span>';
+    }
+}
+
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
+    document.addEventListener('DOMContentLoaded', safeInit);
 } else {
-    init();
+    safeInit();
 }

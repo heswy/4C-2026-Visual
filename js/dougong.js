@@ -10,14 +10,15 @@ class Dougong {
         this.group.name = 'dougong';
         
         // 材质定义
+        const woodTexture = this.createWoodTexture();
         this.materials = {
             gong: new THREE.MeshLambertMaterial({ color: 0x8B4513 }),      // 栱 - 棕色
             dou: new THREE.MeshLambertMaterial({ color: 0xF5DEB3 }),       // 斗 - 米色
             ang: new THREE.MeshLambertMaterial({ color: 0x5D4037 }),       // 昂 - 深棕色
-            wood: new THREE.MeshLambertMaterial({ 
+            wood: new THREE.MeshLambertMaterial(woodTexture ? { 
                 color: 0x8B7355,
-                map: this.createWoodTexture()
-            })
+                map: woodTexture
+            } : { color: 0x8B7355 })
         };
         
         // 构件尺寸配置（单位：米）
@@ -42,36 +43,46 @@ class Dougong {
      * 创建木纹纹理
      */
     createWoodTexture() {
-        const canvas = document.createElement('canvas');
-        canvas.width = 512;
-        canvas.height = 512;
-        const ctx = canvas.getContext('2d');
-        
-        // 基础木色
-        ctx.fillStyle = '#8B7355';
-        ctx.fillRect(0, 0, 512, 512);
-        
-        // 添加木纹线条
-        ctx.strokeStyle = '#6B5344';
-        ctx.lineWidth = 2;
-        
-        for (let i = 0; i < 40; i++) {
-            ctx.beginPath();
-            const y = Math.random() * 512;
-            ctx.moveTo(0, y);
+        try {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
             
-            // 波浪形木纹
-            for (let x = 0; x <= 512; x += 20) {
-                const waveY = y + Math.sin(x * 0.02 + i) * 10 + (Math.random() - 0.5) * 5;
-                ctx.lineTo(x, waveY);
+            if (!ctx) {
+                console.warn('Canvas 2D context 不可用');
+                return null;
             }
-            ctx.stroke();
+            
+            // 基础木色
+            ctx.fillStyle = '#8B7355';
+            ctx.fillRect(0, 0, 512, 512);
+            
+            // 添加木纹线条
+            ctx.strokeStyle = '#6B5344';
+            ctx.lineWidth = 2;
+            
+            for (let i = 0; i < 40; i++) {
+                ctx.beginPath();
+                const y = Math.random() * 512;
+                ctx.moveTo(0, y);
+                
+                // 波浪形木纹
+                for (let x = 0; x <= 512; x += 20) {
+                    const waveY = y + Math.sin(x * 0.02 + i) * 10 + (Math.random() - 0.5) * 5;
+                    ctx.lineTo(x, waveY);
+                }
+                ctx.stroke();
+            }
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+            return texture;
+        } catch (err) {
+            console.warn('创建木纹纹理失败:', err);
+            return null;
         }
-        
-        const texture = new THREE.CanvasTexture(canvas);
-        texture.wrapS = THREE.RepeatWrapping;
-        texture.wrapT = THREE.RepeatWrapping;
-        return texture;
     }
     
     /**
