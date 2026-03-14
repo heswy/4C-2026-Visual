@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>《木构千年》- 中国古代木结构建筑可视化</title>
+  <link rel="stylesheet" href="css/style.css">
+  <!-- Three.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+  <!-- OrbitControls -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+  <div class="app-container">
+    <!-- 顶部标题栏 -->
+    <header class="header">
+      <div class="header-content">
+        <div class="logo">
+          <span class="logo-icon">🏛️</span>
+          <h1 class="title">木构千年</h1>
+        </div>
+        <span class="header-subtitle">中国古代木结构建筑参数化可视化</span>
+        <button class="mobile-toggle" id="mobileToggle" aria-label="打开菜单">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+      </div>
+    </header>
+
+    <!-- 主内容区 -->
+    <main class="main-content">
+      <!-- 移动端遮罩 -->
+      <div class="panel-overlay" id="panelOverlay"></div>
+
+      <!-- 3D画布区域 -->
+      <div class="canvas-container" id="canvas-container">
+        <canvas id="webgl-canvas"></canvas>
+        
+        <!-- 加载指示器 -->
+        <div class="canvas-overlay">
+          <div class="loading-indicator" id="loadingIndicator">
+            <div class="loading-spinner"></div>
+            <span>正在加载斗栱模型...</span>
+          </div>
+        </div>
+
+        <!-- 控制提示 -->
+        <div class="canvas-controls-hint">
+          🖱️ 左键旋转 | 右键平移 | 滚轮缩放 | 悬停查看构件名称
+        </div>
+      </div>
+
+      <!-- 控制面板 -->
+      <aside class="control-panel" id="controlPanel">
+        <div class="panel-header">
+          <h2>⚙️ 控制面板</h2>
+          <button class="panel-close" id="panelClose" aria-label="关闭面板">&times;</button>
+        </div>
+
+        <div class="panel-content">
+          <!-- 朝代选择 -->
+          <div class="control-section">
+            <h3 class="section-title">
+              <span class="section-icon">📜</span>
+              选择朝代
+            </h3>
+            <div class="dynasty-selector">
+              <button class="dynasty-btn active" data-dynasty="tang" data-name="唐代">
+                <span class="dynasty-name">唐</span>
+                <span class="dynasty-period">618-907</span>
+              </button>
+              <button class="dynasty-btn" data-dynasty="song" data-name="宋代">
+                <span class="dynasty-name">宋</span>
+                <span class="dynasty-period">960-1279</span>
+              </button>
+              <button class="dynasty-btn" data-dynasty="mingqing" data-name="明/清">
+                <span class="dynasty-name">明清</span>
+                <span class="dynasty-period">1368-1912</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- 操作按钮 -->
+          <div class="control-section">
+            <h3 class="section-title">
+              <span class="section-icon">🎮</span>
+              模型操作
+            </h3>
+            <div class="action-buttons">
+              <button class="action-btn primary" id="explodeBtn">
+                <span class="btn-icon">💥</span>
+                <span>拆解</span>
+              </button>
+              <button class="action-btn primary" id="assembleBtn">
+                <span class="btn-icon">🧩</span>
+                <span>组装</span>
+              </button>
+              <button class="action-btn secondary" id="resetBtn">
+                <span class="btn-icon">🔄</span>
+                <span>重置视图</span>
+              </button>
+            </div>
+            
+            <!-- 拆解滑块 -->
+            <div class="explode-slider-container" id="explodeSliderContainer">
+              <label>
+                拆解程度
+                <span class="slider-value" id="explodeValue">0%</span>
+              </label>
+              <input type="range" class="slider" id="explodeSlider" min="0" max="100" value="0">
+              <div class="slider-labels">
+                <span>组装</span>
+                <span>完全拆解</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 材分计算器 -->
+          <div class="control-section">
+            <h3 class="section-title">
+              <span class="section-icon">📐</span>
+              材分等级
+            </h3>
+            <div class="caifen-calculator">
+              <div class="caifen-display">
+                <div class="caifen-current">
+                  <span class="caifen-label">当前等级</span>
+                  <span class="caifen-grade" id="caifenGrade">二等材</span>
+                </div>
+                <div class="caifen-dimensions">
+                  <div class="dimension">
+                    <span class="dim-label">材广</span>
+                    <span class="dim-value" id="caiHeight">21 寸</span>
+                  </div>
+                  <div class="dimension">
+                    <span class="dim-label">材厚</span>
+                    <span class="dim-value" id="caiWidth">14 寸</span>
+                  </div>
+                </div>
+              </div>
+              <div class="slider-container">
+                <label>材等等级（1-8等）</label>
+                <input type="range" class="slider" id="caifenSlider" min="1" max="8" value="2">
+                <div class="slider-labels">
+                  <span>一等</span>
+                  <span>八等</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 构件开关 -->
+          <div class="control-section">
+            <h3 class="section-title">
+              <span class="section-icon">👁️</span>
+              构件显示
+            </h3>
+            <div class="component-toggles">
+              <label class="toggle-item">
+                <input type="checkbox" class="toggle-checkbox" data-component="dougong" checked>
+                <span class="toggle-slider"></span>
+                <span class="toggle-label">斗栱</span>
+              </label>
+              <label class="toggle-item">
+                <input type="checkbox" class="toggle-checkbox" data-component="liang" checked>
+                <span class="toggle-slider"></span>
+                <span class="toggle-label">梁架</span>
+              </label>
+              <label class="toggle-item">
+                <input type="checkbox" class="toggle-checkbox" data-component="zhuzai" checked>
+                <span class="toggle-slider"></span>
+                <span class="toggle-label">柱网</span>
+              </label>
+              <label class="toggle-item">
+                <input type="checkbox" class="toggle-checkbox" data-component="yanwu" checked>
+                <span class="toggle-slider"></span>
+                <span class="toggle-label">檐屋</span>
+              </label>
+              <label class="toggle-item">
+                <input type="checkbox" class="toggle-checkbox" data-component="pingban" checked>
+                <span class="toggle-slider"></span>
+                <span class="toggle-label">平闇/平棊</span>
+              </label>
+              <label class="toggle-item">
+                <input type="checkbox" class="toggle-checkbox" data-component="jichu" checked>
+                <span class="toggle-slider"></span>
+                <span class="toggle-label">台基</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- 信息区域 -->
+          <div class="control-section info-section">
+            <h3 class="section-title">
+              <span class="section-icon">ℹ️</span>
+              当前建筑
+            </h3>
+            <div class="info-content">
+              <div class="info-item">
+                <span class="info-label">朝代</span>
+                <span class="info-value" id="currentDynasty">唐代</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">代表建筑</span>
+                <span class="info-value" id="currentBuilding">佛光寺东大殿</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">建造年代</span>
+                <span class="info-value" id="buildYear">857年</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">材分等级</span>
+                <span class="info-value" id="caiGrade">一等材</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </main>
+
+    <!-- 底部信息栏 -->
+    <footer class="footer">
+      <div class="footer-content">
+        <div class="footer-left">
+          <span class="status-indicator online" id="statusIndicator"></span>
+          <span id="statusText">系统就绪</span>
+        </div>
+        <div class="footer-center" id="tipText">
+          💡 提示：使用鼠标与3D模型交互，悬停查看构件名称
+        </div>
+        <div class="footer-right">
+          《木构千年》MVP v1.0
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <!-- 引入JS模块 -->
+  <script src="js/caiFen.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/dougong.js"></script>
+  <script src="js/animation.js"></script>
+  <script src="js/labels.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
